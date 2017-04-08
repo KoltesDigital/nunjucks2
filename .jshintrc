@@ -26,6 +26,9 @@
   "node": true,
   "mocha": true,
   "globals": {
-    "nunjucks": false
+    "require": true,
+    "process": true,
+    "nunjucks": false,
+    "noop" : true
   }
 }

@@ -39,7 +39,7 @@ var config = {
         libraryTarget: 'umd'
     },
     node: {
-        process: 'empty'
+        process: 'mock'
     },
     plugins: [
         new webpack.NormalModuleReplacementPlugin(/(path|precompile)$/,

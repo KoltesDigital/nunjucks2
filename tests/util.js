@@ -33,8 +33,12 @@
             ctx = null;
         }
 
-        var res = render(str, ctx, {}, env);
-        expect(res).to.be(str2);
+        return render(str, ctx, {}, env).then(function (res) {
+
+            expect(res).to.be(str2);
+
+        });
+
     }
 
     function finish(done) {
@@ -51,22 +55,7 @@
         return str.replace(/\r\n|\r/g, '\n');
     }
 
-    function render(str, ctx, opts, env, cb) {
-        if(typeof ctx === 'function') {
-            cb = ctx;
-            ctx = null;
-            opts = null;
-            env = null;
-        }
-        else if(typeof opts === 'function') {
-            cb = opts;
-            opts = null;
-            env = null;
-        }
-        else if(typeof env === 'function') {
-            cb = env;
-            env = null;
-        }
+    function render(str, ctx, opts, env) {
 
         opts = opts || {};
         opts.dev = true;
@@ -94,25 +83,7 @@
         ctx = ctx || {};
         var t = new Template(str, e);
 
-        if(!cb) {
-            return t.render(ctx);
-        }
-        else {
-            numAsyncs++;
-            t.render(ctx, function(err, res) {
-                if(err && !opts.noThrow) {
-                    throw err;
-                }
-
-                cb(err, normEOL(res));
-
-                numAsyncs--;
-
-                if(numAsyncs === 0 && doneHandler) {
-                    doneHandler();
-                }
-            });
-        }
+        return t.render(ctx);
     }
 
     if(typeof module !== 'undefined') {

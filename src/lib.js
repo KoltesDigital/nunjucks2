@@ -2,6 +2,7 @@
 
 var ArrayProto = Array.prototype;
 var ObjProto = Object.prototype;
+var Promise = require("bluebird");
 
 var escapeMap = {
     '&': '&amp;',
@@ -162,7 +163,7 @@ exports.repeat = function(char_, n) {
 };
 
 exports.each = function(obj, func, context) {
-    if(obj == null) {
+    if(obj === null) {
         return;
     }
 
@@ -178,7 +179,7 @@ exports.each = function(obj, func, context) {
 
 exports.map = function(obj, func) {
     var results = [];
-    if(obj == null) {
+    if(obj === null) {
         return results;
     }
 
@@ -197,41 +198,30 @@ exports.map = function(obj, func) {
     return results;
 };
 
-exports.asyncIter = function(arr, iter, cb) {
-    var i = -1;
+exports.asyncAll = function(arr, iter) {
 
-    function next() {
-        i++;
+    return Promise.map(arr, iter);
 
-        if(i < arr.length) {
-            iter(arr[i], i, next, cb);
-        }
-        else {
-            cb();
-        }
-    }
-
-    next();
 };
 
-exports.asyncFor = function(obj, iter, cb) {
+exports.asyncIter = function(arr, iter) {
+    
+    return Promise.each(arr, iter);
+    
+};
+
+exports.asyncFor = function(obj, iter) {
+
+    if (!obj) return Promise.resolve();
     var keys = exports.keys(obj);
-    var len = keys.length;
-    var i = -1;
 
-    function next() {
-        i++;
-        var k = keys[i];
+    if (keys.length === 0) return Promise.resolve();
 
-        if(i < len) {
-            iter(k, obj[k], i, len, next);
-        }
-        else {
-            cb();
-        }
-    }
+    return Promise.each(keys, function (k, ind, len) {
 
-    next();
+        return iter(k, obj[k], ind, len);
+
+    });
 };
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/indexOf#Polyfill

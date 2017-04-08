@@ -2,6 +2,7 @@
 
 var lib = require('./lib');
 var Obj = require('./object');
+Promise = require("bluebird");
 
 // Frames keep track of scoping both at compile-time and run-time so
 // we know how to access variables. Block tags can introduce special
@@ -78,7 +79,7 @@ var Frame = Obj.extend({
 });
 
 function makeMacro(argNames, kwargNames, func) {
-    return function() {
+    return Promise.method(function() {
         var argCount = numArgs(arguments);
         var args;
         var kwargs = getKeywordArgs(arguments);
@@ -118,7 +119,7 @@ function makeMacro(argNames, kwargNames, func) {
         }
 
         return func.apply(this, args);
-    };
+    });
 }
 
 function makeKeywordArgs(obj) {
@@ -264,80 +265,44 @@ function handleError(error, lineno, colno) {
     }
 }
 
-function asyncEach(arr, dimen, iter, cb) {
+function asyncEach(arr, dimen, iter) {
     if(lib.isArray(arr)) {
-        var len = arr.length;
 
-        lib.asyncIter(arr, function(item, i, next) {
+        return lib.asyncIter(arr, function(item, i, len) {
             switch(dimen) {
-            case 1: iter(item, i, len, next); break;
-            case 2: iter(item[0], item[1], i, len, next); break;
-            case 3: iter(item[0], item[1], item[2], i, len, next); break;
-            default:
-                item.push(i, next);
-                iter.apply(this, item);
+                case 1:
+                    return iter(item, i, len);
+                default:
+                    return iter.apply(this, [].concat(item).concat([i, len]));
             }
-        }, cb);
+        });
     }
     else {
-        lib.asyncFor(arr, function(key, val, i, len, next) {
-            iter(key, val, i, len, next);
-        }, cb);
+        return lib.asyncFor(arr, function(key, val, i, len) {
+            return iter(key, val, i, len);
+        });
     }
 }
 
-function asyncAll(arr, dimen, func, cb) {
-    var finished = 0;
-    var len, i;
-    var outputArr;
-
-    function done(i, output) {
-        finished++;
-        outputArr[i] = output;
-
-        if(finished === len) {
-            cb(null, outputArr.join(''));
-        }
-    }
+function asyncAll(arr, dimen, func) {
 
     if(lib.isArray(arr)) {
-        len = arr.length;
-        outputArr = new Array(len);
 
-        if(len === 0) {
-            cb(null, '');
-        }
-        else {
-            for(i = 0; i < arr.length; i++) {
-                var item = arr[i];
-
-                switch(dimen) {
-                case 1: func(item, i, len, done); break;
-                case 2: func(item[0], item[1], i, len, done); break;
-                case 3: func(item[0], item[1], item[2], i, len, done); break;
+        return lib.asyncAll(arr, function(item, i, len) {
+            switch(dimen) {
+                case 1:
+                    return func(this, item, i, len);
                 default:
-                    item.push(i, done);
-                    // jshint validthis: true
-                    func.apply(this, item);
-                }
+                    return func.apply(this, [].concat(item).concat([i, len]));
             }
-        }
+        });
     }
     else {
-        var keys = lib.keys(arr);
-        len = keys.length;
-        outputArr = new Array(len);
-
-        if(len === 0) {
-            cb(null, '');
-        }
-        else {
-            for(i = 0; i < keys.length; i++) {
-                var k = keys[i];
-                func(k, arr[k], i, len, done);
-            }
-        }
+        return lib.asyncFor(arr, function(key, val, i, len) {
+            return func(key, val, i, len);
+        });
     }
+
 }
 
 module.exports = {

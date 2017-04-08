@@ -1,4 +1,4 @@
-# Nunjucks
+# Nunjucks - But using Promises, specifically Bluebird - AKA Nunjucks2
 
 [Nunjucks](https://mozilla.github.io/nunjucks/) is a full featured
 templating engine for javascript. It is heavily inspired by

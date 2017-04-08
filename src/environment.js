@@ -1,27 +1,23 @@
 'use strict';
 
 var path = require('path');
-var asap = require('asap');
 var lib = require('./lib');
 var Obj = require('./object');
+var waterfall = require("a-sync-waterfall");
 var compiler = require('./compiler');
 var builtin_filters = require('./filters');
 var builtin_loaders = require('./loaders');
 var runtime = require('./runtime');
 var globals = require('./globals');
-var waterfall = require('a-sync-waterfall');
 var Frame = runtime.Frame;
 var Template;
+Promise = require("bluebird");
 
 // Unconditionally load in this loader, even if no other ones are
 // included (possible in the slim browser build)
 builtin_loaders.PrecompiledLoader = require('./precompiled-loader');
 
-// If the user is using the async API, *always* call it
-// asynchronously even if the template was synchronous.
-function callbackAsap(cb, err, res) {
-    asap(function() { cb(err, res); });
-}
+
 
 var Environment = Obj.extend({
     init: function(loaders, opts) {
@@ -38,7 +34,7 @@ var Environment = Obj.extend({
         // every string variable will be escaped by default.
         // If false, strings can be manually escaped using the `escape` filter.
         // defaults to true
-        this.opts.autoescape = opts.autoescape != null ? opts.autoescape : true;
+        this.opts.autoescape = opts.autoescape !== null ? opts.autoescape : true;
 
         // If true, this will make the system throw errors if trying
         // to output a null or undefined value
@@ -148,12 +144,20 @@ var Environment = Obj.extend({
         return this.filters[name];
     },
 
+    getFilterAsync: function(name) {
+        if(!this.filters[name]) {
+            throw new Error('filter not found: ' + name);
+        }
+        return Promise.method(this.filters[name]);
+    },
+
     resolveTemplate: function(loader, parentName, filename) {
         var isRelative = (loader.isRelative && parentName)? loader.isRelative(filename) : false;
         return (isRelative && loader.resolve)? loader.resolve(parentName, filename) : filename;
     },
 
-    getTemplate: function(name, eagerCompile, parentName, ignoreMissing, cb) {
+    getTemplate: function(name, eagerCompile, parentName, ignoreMissing) {
+
         var that = this;
         var tmpl = null;
         if(name && name.raw) {
@@ -161,111 +165,86 @@ var Environment = Obj.extend({
             name = name.raw;
         }
 
-        if(lib.isFunction(parentName)) {
-            cb = parentName;
-            parentName = null;
-            eagerCompile = eagerCompile || false;
-        }
-
-        if(lib.isFunction(eagerCompile)) {
-            cb = eagerCompile;
-            eagerCompile = false;
-        }
-
         if (name instanceof Template) {
+
              tmpl = name;
+
         }
         else if(typeof name !== 'string') {
-            throw new Error('template names must be a string: ' + name);
+
+            return Promise.reject(new Error('template names must be a string: ' + name));
+
         }
         else {
+
             for (var i = 0; i < this.loaders.length; i++) {
                 var _name = this.resolveTemplate(this.loaders[i], parentName, name);
                 tmpl = this.loaders[i].cache[_name];
                 if (tmpl) break;
             }
+
         }
 
         if(tmpl) {
+
             if(eagerCompile) {
                 tmpl.compile();
             }
 
-            if(cb) {
-                cb(null, tmpl);
-            }
-            else {
-                return tmpl;
-            }
+            return Promise.resolve(tmpl);
+
         } else {
-            var syncResult;
-            var _this = this;
 
-            var createTemplate = function(err, info) {
-                if(!info && !err) {
-                    if(!ignoreMissing) {
-                        err = new Error('template not found: ' + name);
-                    }
-                }
+            var createTemplate = function(info) {
 
-                if (err) {
-                    if(cb) {
-                        cb(err);
-                    }
-                    else {
-                        throw err;
+                var tmpl;
+                if(info) {
+
+                    tmpl = new Template(info.src, that,
+                                        info.path, eagerCompile);
+
+                    if(!info.noCache) {
+                        info.loader.cache[name] = tmpl;
                     }
                 }
                 else {
-                    var tmpl;
-                    if(info) {
-                        tmpl = new Template(info.src, _this,
-                                            info.path, eagerCompile);
-
-                        if(!info.noCache) {
-                            info.loader.cache[name] = tmpl;
-                        }
-                    }
-                    else {
-                        tmpl = new Template('', _this,
-                                            '', eagerCompile);
-                    }
-
-                    if(cb) {
-                        cb(null, tmpl);
-                    }
-                    else {
-                        syncResult = tmpl;
-                    }
+                    tmpl = new Template('', that,
+                                        '', eagerCompile);
                 }
+
+                return tmpl;
+
             };
 
-            lib.asyncIter(this.loaders, function(loader, i, next, done) {
-                function handle(err, src) {
-                    if(err) {
-                        done(err);
-                    }
-                    else if(src) {
-                        src.loader = loader;
-                        done(null, src);
-                    }
-                    else {
-                        next();
-                    }
+
+
+            return Promise.any(Promise.map(this.loaders, function(loader) {
+
+                function handle(src) {
+                    if (!src || !src.src) throw new Error('Unable to find item');
+                    src.loader = loader;
+                    return src;
                 }
 
                 // Resolve name relative to parentName
                 name = that.resolveTemplate(loader, parentName, name);
 
                 if(loader.async) {
-                    loader.getSource(name, handle);
+                    return Promise.promisify(loader.getSource)(name).then(handle);
                 }
                 else {
-                    handle(null, loader.getSource(name));
-                }
-            }, createTemplate);
+                    var item = loader.getSource(name);
 
-            return syncResult;
+                    if (!item) throw new Error('Unable to find item');
+
+                    return handle(item);
+                }
+            })).then(createTemplate).catch(function (e) {
+
+                if (!ignoreMissing) throw e;
+                return createTemplate(false);
+
+            });
         }
     },
 
@@ -282,7 +261,13 @@ var Environment = Obj.extend({
         }
 
         NunjucksView.prototype.render = function(opts, cb) {
-          env.render(this.name, opts, cb);
+
+            env.render(this.name, opts).then(function (r) {
+
+                cb(null, r);
+
+            }).catch(cb);
+
         };
 
         app.set('view', NunjucksView);
@@ -290,42 +275,22 @@ var Environment = Obj.extend({
         return this;
     },
 
-    render: function(name, ctx, cb) {
-        if(lib.isFunction(ctx)) {
-            cb = ctx;
-            ctx = null;
-        }
+    render: function(name, ctx) {
 
-        // We support a synchronous API to make it easier to migrate
-        // existing code to async. This works because if you don't do
-        // anything async work, the whole thing is actually run
-        // synchronously.
-        var syncResult = null;
+        return this.getTemplate(name).then(function(tmpl) {
 
-        this.getTemplate(name, function(err, tmpl) {
-            if(err && cb) {
-                callbackAsap(cb, err);
-            }
-            else if(err) {
-                throw err;
-            }
-            else {
-                syncResult = tmpl.render(ctx, cb);
-            }
+             return tmpl.render(ctx);
+
         });
 
-        return syncResult;
     },
 
-    renderString: function(src, ctx, opts, cb) {
-        if(lib.isFunction(opts)) {
-            cb = opts;
-            opts = {};
-        }
+    renderString: function(src, ctx, opts) {
+
         opts = opts || {};
 
         var tmpl = new Template(src, this, opts.path);
-        return tmpl.render(ctx, cb);
+        return tmpl.render(ctx);
     },
 
     waterfall: waterfall
@@ -350,6 +315,7 @@ var Context = Obj.extend({
         for(var name in blocks) {
             this.addBlock(name, blocks[name]);
         }
+
     },
 
     lookup: function(name) {
@@ -385,16 +351,16 @@ var Context = Obj.extend({
         return this.blocks[name][0];
     },
 
-    getSuper: function(env, name, block, frame, runtime, cb) {
+    getSuper: function(env, name, block, frame, runtime) {
         var idx = lib.indexOf(this.blocks[name] || [], block);
         var blk = this.blocks[name][idx + 1];
         var context = this;
 
         if(idx === -1 || !blk) {
-            throw new Error('no super block available for "' + name + '"');
+            return Promise.reject(new Error('no super block available for "' + name + '"'));
         }
 
-        blk(env, context, frame, runtime, cb);
+        return blk(env, context, frame, runtime);
     },
 
     addExport: function(name) {
@@ -445,24 +411,7 @@ Template = Obj.extend({
         }
     },
 
-    render: function(ctx, parentFrame, cb) {
-        if (typeof ctx === 'function') {
-            cb = ctx;
-            ctx = {};
-        }
-        else if (typeof parentFrame === 'function') {
-            cb = parentFrame;
-            parentFrame = null;
-        }
-
-        var forceAsync = true;
-        if(parentFrame) {
-            // If there is a frame, we are being called from internal
-            // code of another template, and the internal system
-            // depends on the sync/async nature of the parent template
-            // to be inherited, so force an async callback
-            forceAsync = false;
-        }
+    render: function(ctx, parentFrame) {
 
         var _this = this;
         // Catch compile errors for async rendering
@@ -470,79 +419,52 @@ Template = Obj.extend({
             _this.compile();
         } catch (_err) {
             var err = lib.prettifyError(this.path, this.env.opts.dev, _err);
-            if (cb) return callbackAsap(cb, err);
-            else throw err;
+            return Promise.reject(err);
         }
-
         var context = new Context(ctx || {}, _this.blocks, _this.env);
         var frame = parentFrame ? parentFrame.push(true) : new Frame();
         frame.topLevel = true;
-        var syncResult = null;
 
-        _this.rootRenderFunc(
+        return _this.rootRenderFunc(
             _this.env,
             context,
             frame || new Frame(),
-            runtime,
-            function(err, res) {
-                if(err) {
-                    err = lib.prettifyError(_this.path, _this.env.opts.dev, err);
-                }
+            runtime
+        ).catch(function (_err) {
 
-                if(cb) {
-                    if(forceAsync) {
-                        callbackAsap(cb, err, res);
-                    }
-                    else {
-                        cb(err, res);
-                    }
-                }
-                else {
-                    if(err) { throw err; }
-                    syncResult = res;
-                }
-            }
-        );
+            var err = lib.prettifyError(_this.path, _this.env.opts.dev, _err);
+            console.log(_err.toString());
+            return Promise.reject(err);
 
-        return syncResult;
+        });
     },
 
 
-    getExported: function(ctx, parentFrame, cb) {
-        if (typeof ctx === 'function') {
-            cb = ctx;
-            ctx = {};
-        }
-
-        if (typeof parentFrame === 'function') {
-            cb = parentFrame;
-            parentFrame = null;
-        }
+    getExported: function(ctx, parentFrame) {
 
         // Catch compile errors for async rendering
         try {
             this.compile();
-        } catch (e) {
-            if (cb) return cb(e);
-            else throw e;
+        } catch (_err) {
+            var err = lib.prettifyError(this.path, this.env.opts.dev, _err);
+            return Promise.reject(err);
         }
 
+        var _this = this;
         var frame = parentFrame ? parentFrame.push() : new Frame();
         frame.topLevel = true;
 
         // Run the rootRenderFunc to populate the context with exported vars
         var context = new Context(ctx || {}, this.blocks, this.env);
-        this.rootRenderFunc(this.env,
+        return this.rootRenderFunc(this.env,
                             context,
                             frame,
-                            runtime,
-                            function(err) {
-        		        if ( err ) {
-        			    cb(err, null);
-        		        } else {
-        			    cb(null, context.getExported());
-        		        }
-                            });
+                            runtime).then(context.getExported.bind(context)).catch(function (_err) {
+
+            var err = lib.prettifyError(_this.path, _this.env.opts.dev, _err);
+            return Promise.reject(err);
+
+        });
     },
 
     compile: function() {
@@ -564,9 +486,17 @@ Template = Obj.extend({
                                           this.path,
                                           this.env.opts);
 
+            //console.log(source)
             /* jslint evil: true */
-            var func = new Function(source);
-            props = func();
+            try {
+                var func = new Function(source);
+                props = func();
+            }
+            catch (ex) {
+                throw ex;
+
+            }
+
         }
 
         this.blocks = this._getBlocks(props);
