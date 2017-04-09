@@ -484,29 +484,29 @@
         //     equal('{{ \'a\' ~ \'b\' ~ 5 }}', 'ab5')], noop).then(zop(done), zop(done));
         // });
 
-        it('should compile macros', function(done) {
-            equal('{% macro foo() %}This is a macro{% endmacro %}' +
-                '{{ foo() }}',
-                'This is a macro').then(zop(done), zop(done));
-        });
-
-        it('should compile macros with optional args', function(done) {
-            equal('{% macro foo(x, y) %}{{ y }}{% endmacro %}' +
-                '{{ foo(1) }}',
-                '').then(zop(done), zop(done));
-        });
-
-        it('should compile macros with args that can be passed to filters', function(done) {
-            equal('{% macro foo(x) %}{{ x|title }}{% endmacro %}' +
-                '{{ foo("foo") }}',
-                'Foo').then(zop(done), zop(done));
-        });
-
-        it('should compile macros with positional args', function(done) {
-            equal('{% macro foo(x, y) %}{{ y }}{% endmacro %}' +
-                '{{ foo(1, 2) }}',
-                '2').then(zop(done), zop(done));
-        });
+        // it('should compile macros', function(done) {
+        //     equal('{% macro foo() %}This is a macro{% endmacro %}' +
+        //         '{{ foo() }}',
+        //         'This is a macro').then(zop(done), zop(done));
+        // });
+        //
+        // it('should compile macros with optional args', function(done) {
+        //     equal('{% macro foo(x, y) %}{{ y }}{% endmacro %}' +
+        //         '{{ foo(1) }}',
+        //         '').then(zop(done), zop(done));
+        // });
+        //
+        // it('should compile macros with args that can be passed to filters', function(done) {
+        //     equal('{% macro foo(x) %}{{ x|title }}{% endmacro %}' +
+        //         '{{ foo("foo") }}',
+        //         'Foo').then(zop(done), zop(done));
+        // });
+        //
+        // it('should compile macros with positional args', function(done) {
+        //     equal('{% macro foo(x, y) %}{{ y }}{% endmacro %}' +
+        //         '{{ foo(1, 2) }}',
+        //         '2').then(zop(done), zop(done));
+        // });
         //
         // it('should compile macros with arg defaults', function(done) {
         //     equal('{% macro foo(x, y, z=5) %}{{ y }}{% endmacro %}' +
@@ -558,6 +558,24 @@
         //         '11020').then(zop(done), zop(done));
         // });
         //
+
+
+        /*****
+         *
+         *
+         *
+         *
+         */
+
+        // it('should compile macro calls inside blocks', function(done) {
+        //     equal('{% extends "base.njk" %}' +
+        //         '{% block block1 %}' +
+        //         'Hello' +
+        //         '{% endblock %}',
+        //         'FooHelloBazFizzle').then(zop(done), zop(done));
+        // });
+
+
         // it('should compile macro calls inside blocks', function(done) {
         //     equal('{% extends "base.njk" %}' +
         //         '{% macro foo(x, y=2, z=5) %}{{ x }}{{ y }}{{ z }}' +
@@ -905,69 +923,69 @@
         //         })]).then(zop(done), zop(done));
         // });
         //
-        it('should allow custom tag with args compilation', function(done) {
-            function testExtension() {
-                // jshint validthis: true
-                this.tags = ['test'];
-
-                /* normally this is automatically done by Environment */
-                this._name = 'testExtension';
-
-                this.parse = function(parser, nodes) {
-                    var body, args = null;
-                    var tok = parser.nextToken();
-
-                    // passing true makes it tolerate when no args exist
-                    args = parser.parseSignature(true);
-                    parser.advanceAfterBlockEnd(tok.value);
-
-                    body = parser.parseUntilBlocks('endtest');
-                    parser.advanceAfterBlockEnd();
-
-                    return new nodes.CallExtension(this, 'run', args, [body]);
-                };
-
-                this.run = function(context, prefix, kwargs, _body) {
-                    if (typeof prefix === 'function') {
-                        _body = prefix;
-                        prefix = '';
-                        kwargs = {};
-                    }
-                    else if (typeof kwargs === 'function') {
-                        _body = kwargs;
-                        kwargs = {};
-                    }
-
-                    return _body().then(function (body) {
-                        var output = prefix + body.split('').reverse().join('');
-                        if (kwargs.cutoff) {
-                            output = output.slice(0, kwargs.cutoff);
-                        }
-
-                        return output;
-                    });
-                };
-            }
-
-            var opts = {
-                extensions: {
-                    'testExtension': new testExtension()
-                }
-            };
-
-            Promise.each([
-            render('{% test %}foobar{% endtest %}', null, opts).then(function(res) {
-                expect(res).to.be('raboof');
-            }),
-
-            render('{% test("biz") %}foobar{% endtest %}', null, opts).then(function(res) {
-                expect(res).to.be('bizraboof');
-            }),
-
-            render('{% test("biz", cutoff=5) %}foobar{% endtest %}', null, opts).then(function(res) {
-                expect(res).to.be('bizra');
-            })], noop).then(zop(done), zop(done));
-        });
+        // it('should allow custom tag with args compilation', function(done) {
+        //     function testExtension() {
+        //         // jshint validthis: true
+        //         this.tags = ['test'];
+        //
+        //         /* normally this is automatically done by Environment */
+        //         this._name = 'testExtension';
+        //
+        //         this.parse = function(parser, nodes) {
+        //             var body, args = null;
+        //             var tok = parser.nextToken();
+        //
+        //             // passing true makes it tolerate when no args exist
+        //             args = parser.parseSignature(true);
+        //             parser.advanceAfterBlockEnd(tok.value);
+        //
+        //             body = parser.parseUntilBlocks('endtest');
+        //             parser.advanceAfterBlockEnd();
+        //
+        //             return new nodes.CallExtension(this, 'run', args, [body]);
+        //         };
+        //
+        //         this.run = function(context, prefix, kwargs, _body) {
+        //             if (typeof prefix === 'function') {
+        //                 _body = prefix;
+        //                 prefix = '';
+        //                 kwargs = {};
+        //             }
+        //             else if (typeof kwargs === 'function') {
+        //                 _body = kwargs;
+        //                 kwargs = {};
+        //             }
+        //
+        //             return _body().then(function (body) {
+        //                 var output = prefix + body.split('').reverse().join('');
+        //                 if (kwargs.cutoff) {
+        //                     output = output.slice(0, kwargs.cutoff);
+        //                 }
+        //
+        //                 return output;
+        //             });
+        //         };
+        //     }
+        //
+        //     var opts = {
+        //         extensions: {
+        //             'testExtension': new testExtension()
+        //         }
+        //     };
+        //
+        //     Promise.each([
+        //     render('{% test %}foobar{% endtest %}', null, opts).then(function(res) {
+        //         expect(res).to.be('raboof');
+        //     }),
+        //
+        //     render('{% test("biz") %}foobar{% endtest %}', null, opts).then(function(res) {
+        //         expect(res).to.be('bizraboof');
+        //     }),
+        //
+        //     render('{% test("biz", cutoff=5) %}foobar{% endtest %}', null, opts).then(function(res) {
+        //         expect(res).to.be('bizra');
+        //     })], noop).then(zop(done), zop(done));
+        // });
 
 
 
@@ -993,132 +1011,126 @@
                     return new nodes.CallExtension(this, 'run', args, [body]);
                 };
 
-                this.run = function(context, prefix, kwargs, _body) {
-                    if (typeof prefix === 'function') {
-                        _body = prefix;
-                        prefix = '';
-                        kwargs = {};
-                    }
-                    else if (typeof kwargs === 'function') {
-                        _body = kwargs;
-                        kwargs = {};
-                    }
+                this.run = function(context, argArr, contentArr) {
 
-                    return _body().then(function (body) {
-                        var output = prefix + body.split('').reverse().join('');
-                        if (kwargs.cutoff) {
-                            output = output.slice(0, kwargs.cutoff);
-                        }
+                    console.log(contentArr);
 
-                        return output;
+                    return Promise.all(contentArr).spread(function (body) {
+
+                        console.log(body)
+
+                        return body.split('').reverse().join('');
+
                     });
+
                 };
             }
-            function testExtensionInnerA() {
-                // jshint validthis: true
-                this.tags = ['test'];
-
-                /* normally this is automatically done by Environment */
-                this._name = 'testExtension';
-
-                this.parse = function(parser, nodes) {
-                    var body, args = null;
-                    var tok = parser.nextToken();
-
-                    // passing true makes it tolerate when no args exist
-                    args = parser.parseSignature(true);
-                    parser.advanceAfterBlockEnd(tok.value);
-
-                    body = parser.parseUntilBlocks('endtest');
-                    parser.advanceAfterBlockEnd();
-
-                    return new nodes.CallExtension(this, 'run', args, [body]);
-                };
-
-                this.run = function(context, prefix, kwargs, _body) {
-                    if (typeof prefix === 'function') {
-                        _body = prefix;
-                        prefix = '';
-                        kwargs = {};
-                    }
-                    else if (typeof kwargs === 'function') {
-                        _body = kwargs;
-                        kwargs = {};
-                    }
-
-                    return _body().then(function (body) {
-                        var output = prefix + body.split('').reverse().join('');
-                        if (kwargs.cutoff) {
-                            output = output.slice(0, kwargs.cutoff);
-                        }
-
-                        return output;
-                    });
-                };
-            }
-            function testExtensionInnerB() {
-                // jshint validthis: true
-                this.tags = ['test'];
-
-                /* normally this is automatically done by Environment */
-                this._name = 'testExtension';
-
-                this.parse = function(parser, nodes) {
-                    var body, args = null;
-                    var tok = parser.nextToken();
-
-                    // passing true makes it tolerate when no args exist
-                    args = parser.parseSignature(true);
-                    parser.advanceAfterBlockEnd(tok.value);
-
-                    body = parser.parseUntilBlocks('endtest');
-                    parser.advanceAfterBlockEnd();
-
-                    return new nodes.CallExtension(this, 'run', args, [body]);
-                };
-
-                this.run = function(context, prefix, kwargs, _body) {
-                    if (typeof prefix === 'function') {
-                        _body = prefix;
-                        prefix = '';
-                        kwargs = {};
-                    }
-                    else if (typeof kwargs === 'function') {
-                        _body = kwargs;
-                        kwargs = {};
-                    }
-
-                    return _body().then(function (body) {
-                        var output = prefix + body.split('').reverse().join('');
-                        if (kwargs.cutoff) {
-                            output = output.slice(0, kwargs.cutoff);
-                        }
-
-                        return output;
-                    });
-                };
-            }
+            // function testExtensionInnerA() {
+            //     // jshint validthis: true
+            //     this.tags = ['test'];
+            //
+            //     /* normally this is automatically done by Environment */
+            //     this._name = 'testExtension';
+            //
+            //     this.parse = function(parser, nodes) {
+            //         var body, args = null;
+            //         var tok = parser.nextToken();
+            //
+            //         // passing true makes it tolerate when no args exist
+            //         args = parser.parseSignature(true);
+            //         parser.advanceAfterBlockEnd(tok.value);
+            //
+            //         body = parser.parseUntilBlocks('endtest');
+            //         parser.advanceAfterBlockEnd();
+            //
+            //         return new nodes.CallExtension(this, 'run', args, [body]);
+            //     };
+            //
+            //     this.run = function(context, prefix, kwargs, _body) {
+            //         if (typeof prefix === 'function') {
+            //             _body = prefix;
+            //             prefix = '';
+            //             kwargs = {};
+            //         }
+            //         else if (typeof kwargs === 'function') {
+            //             _body = kwargs;
+            //             kwargs = {};
+            //         }
+            //
+            //         return _body().then(function (body) {
+            //             var output = prefix + body.split('').reverse().join('');
+            //             if (kwargs.cutoff) {
+            //                 output = output.slice(0, kwargs.cutoff);
+            //             }
+            //
+            //             return output;
+            //         });
+            //     };
+            // }
+            // function testExtensionInnerB() {
+            //     // jshint validthis: true
+            //     this.tags = ['test'];
+            //
+            //     /* normally this is automatically done by Environment */
+            //     this._name = 'testExtension';
+            //
+            //     this.parse = function(parser, nodes) {
+            //         var body, args = null;
+            //         var tok = parser.nextToken();
+            //
+            //         // passing true makes it tolerate when no args exist
+            //         args = parser.parseSignature(true);
+            //         parser.advanceAfterBlockEnd(tok.value);
+            //
+            //         body = parser.parseUntilBlocks('endtest');
+            //         parser.advanceAfterBlockEnd();
+            //
+            //         return new nodes.CallExtension(this, 'run', args, [body]);
+            //     };
+            //
+            //     this.run = function(context, prefix, kwargs, _body) {
+            //         if (typeof prefix === 'function') {
+            //             _body = prefix;
+            //             prefix = '';
+            //             kwargs = {};
+            //         }
+            //         else if (typeof kwargs === 'function') {
+            //             _body = kwargs;
+            //             kwargs = {};
+            //         }
+            //
+            //         return _body().then(function (body) {
+            //             var output = prefix + body.split('').reverse().join('');
+            //             if (kwargs.cutoff) {
+            //                 output = output.slice(0, kwargs.cutoff);
+            //             }
+            //
+            //             return output;
+            //         });
+            //     };
+            // }
 
             var opts = {
                 extensions: {
-                    'testExtension': new testExtension() ,
-                    'testExtensionInnerA': new testExtensionInnerA(),
-                    'testExtensionInnerB': new testExtensionInnerB()
+                    'testExtension': new testExtension()
+                    // 'testExtensionInnerA': new testExtensionInnerA(),
+                    // 'testExtensionInnerB': new testExtensionInnerB()
                 }
             };
 
             Promise.each([
-                render('{% test %}foobar{% endtest %}', null, opts).then(function(res) {
-                    expect(res).to.be('raboof');
-                }),
+                render('{% test %}Getting annoyed now{% for doc in vbind %}Item: {{ doc.item }}{% endfor %}{% endtest %}', { vbind : [{ item : 'hello'}, { item : 'hello2'}] }, opts).then(function(res) {
+                    expect(res).to.be('2olleh :metIolleh :metIwon deyonna gnitteG');
+                })
 
-                render('{% test("biz") %}foobar{% endtest %}', null, opts).then(function(res) {
-                    expect(res).to.be('bizraboof');
-                }),
-
-                render('{% test("biz", cutoff=5) %}foobar{% endtest %}', null, opts).then(function(res) {
-                    expect(res).to.be('bizra');
-                })], noop).then(zop(done), zop(done));
+                // render('{% test("biz") %}foobar{% endtest %}', null, opts).then(function(res) {
+                //     expect(res).to.be('bizraboof');
+                // }),
+                //
+                // render('{% test("biz", cutoff=5) %}foobar{% endtest %}', null, opts).then(function(res) {
+                //     expect(res).to.be('bizra');
+                // })
+            ], noop).then(zop(done), zop(done));
         });
 
     });

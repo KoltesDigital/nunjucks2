@@ -187,6 +187,7 @@ var Environment = Obj.extend({
 
         if(tmpl) {
 
+
             if(eagerCompile) {
                 tmpl.compile();
             }
@@ -240,6 +241,8 @@ var Environment = Obj.extend({
                     return handle(item);
                 }
             })).then(createTemplate).catch(function (e) {
+
+                console.error("Error finding available templaatre");
 
                 if (!ignoreMissing) throw e;
                 return createTemplate(false);
@@ -412,7 +415,6 @@ Template = Obj.extend({
     },
 
     render: function(ctx, parentFrame) {
-
         var _this = this;
         // Catch compile errors for async rendering
         try {
@@ -431,7 +433,7 @@ Template = Obj.extend({
             frame || new Frame(),
             runtime
         ).catch(function (_err) {
-
+            console.error(_err, _err.stack);
             var err = lib.prettifyError(_this.path, _this.env.opts.dev, _err);
             console.log(_err.toString());
             return Promise.reject(err);

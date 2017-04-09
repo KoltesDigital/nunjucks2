@@ -654,7 +654,8 @@ function handleError(error, lineno, colno) {
 function asyncEach(arr, dimen, iter) {
     if(lib.isArray(arr)) {
 
-        return lib.asyncIter(arr, function(item, i, len) {
+        return Promise.each(arr, function(item, i, len) {
+
             switch(dimen) {
                 case 1:
                     return iter(item, i, len);
@@ -664,29 +665,25 @@ function asyncEach(arr, dimen, iter) {
         });
     }
     else {
-        return lib.asyncFor(arr, function(key, val, i, len) {
-            return iter(key, val, i, len);
-        });
+        return lib.asyncFor(arr, iter);
     }
 }
 
-function asyncAll(arr, dimen, func) {
+function asyncAll( arr, dimen, func) {
 
     if(lib.isArray(arr)) {
 
-        return lib.asyncAll(arr, function(item, i, len) {
+        return Promise.all(arr, function(item, i, len) {
             switch(dimen) {
                 case 1:
-                    return func(this, item, i, len);
+                    return func(item, i, len);
                 default:
                     return func.apply(this, [].concat(item).concat([i, len]));
             }
         });
     }
     else {
-        return lib.asyncFor(arr, function(key, val, i, len) {
-            return func(key, val, i, len);
-        });
+        return lib.asyncFor(arr, func);
     }
 
 }
@@ -6765,6 +6762,7 @@ var Environment = Obj.extend({
 
         if(tmpl) {
 
+
             if(eagerCompile) {
                 tmpl.compile();
             }
@@ -6818,6 +6816,8 @@ var Environment = Obj.extend({
                     return handle(item);
                 }
             })).then(createTemplate).catch(function (e) {
+
+                console.error("Error finding available templaatre");
 
                 if (!ignoreMissing) throw e;
                 return createTemplate(false);
@@ -6990,7 +6990,6 @@ Template = Obj.extend({
     },
 
     render: function(ctx, parentFrame) {
-
         var _this = this;
         // Catch compile errors for async rendering
         try {
@@ -7009,7 +7008,7 @@ Template = Obj.extend({
             frame || new Frame(),
             runtime
         ).catch(function (_err) {
-
+            console.error(_err, _err.stack);
             var err = lib.prettifyError(_this.path, _this.env.opts.dev, _err);
             console.log(_err.toString());
             return Promise.reject(err);

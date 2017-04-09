@@ -37,7 +37,7 @@ var Compiler = Object.extend({
         this.lastId = 0;
         this.buffer = null;
         this.bufferStack = [];
-        this.scopeClosers = '';
+        this.scopeClosers = [];
         this.inBlock = false;
         this.throwOnUndefined = throwOnUndefined;
     },
@@ -49,10 +49,26 @@ var Compiler = Object.extend({
         throw new lib.TemplateError(msg, lineno, colno);
     },
 
+    pushThisBufferId: function() {
+        this.bufferStack.push(this.buffer);
+        this.buffer = 'this._b';
+        this.emit(this.buffer + ' = "";');
+    },
+
+    pushBufferIdParam: function(id) {
+        this.bufferStack.push(this.buffer);
+        this.buffer = id;
+    },
+
     pushBufferId: function(id) {
         this.bufferStack.push(this.buffer);
         this.buffer = id;
         this.emit('var ' + this.buffer + ' = "";');
+    },
+
+    popThisBufferId: function() {
+        this.buffer = this.bufferStack.pop();
+        return 'this._b';
     },
 
     popBufferId: function() {
@@ -76,7 +92,7 @@ var Compiler = Object.extend({
 
     emitFuncBeginAsync: function(name) {
         this.buffer = 'output';
-        this.scopeClosers = '';
+        this.scopeClosers = [];
         this.emitLine('function ' + name + '(env, context, frame, runtime) {');
         this.emitLine('var lineno = null;');
         this.emitLine('var colno = null;');
@@ -86,7 +102,7 @@ var Compiler = Object.extend({
 
     emitFuncBeginAsyncBind: function(name) {
         this.buffer = 'output';
-        this.scopeClosers = '';
+        this.scopeClosers = [];
         this.emitLine('function ' + name + '(env, context, frame, runtime) {');
         this.emitLine('var lineno = null;');
         this.emitLine('var colno = null;');
@@ -96,7 +112,7 @@ var Compiler = Object.extend({
 
     emitFuncBegin: function(name) {
         this.buffer = 'output';
-        this.scopeClosers = '';
+        this.scopeClosers = [];
         this.emitLine('function ' + name + '(env, context, frame, runtime) {');
         this.emitLine('var lineno = null;');
         this.emitLine('var colno = null;');
@@ -111,7 +127,8 @@ var Compiler = Object.extend({
 
         this.closeScopeLevels();
         this.emitLine('} catch (e) {');
-        this.emitLine('  cb(runtime.handleError(e, lineno, colno));');
+        this.emitLine('  console.error(e, e.stack);');
+        this.emitLine('  throw runtime.handleError(e, lineno, colno);');
         this.emitLine('}');
         this.emitLine('}');
         this.buffer = null;
@@ -126,24 +143,35 @@ var Compiler = Object.extend({
         }
 
         this.closeScopeLevels();
-        this.emitLine('}).catch(function (e) {throw runtime.handleError(e, lineno, colno);})');
+        this.emitLine('}).catch(function (e) {');
+        this.emitLine('  console.error(e, e.stack);');
+        this.emitLine('  throw runtime.handleError(e, lineno, colno);');
+        this.emitLine('})')
+        ;
         this.emitLine('}');
         this.buffer = null;
     },
 
     addScopeLevel: function() {
-        this.scopeClosers += '})';
+        this.scopeClosers.push('})');
+    },
+
+    closeToMyScopeLevel: function(myLevel) {
+        var len = this.scopeClosers.length;
+        if (!this.scopeClosers || len === 0 || len <= myLevel) return;
+        this.emitLine(this.scopeClosers.splice(myLevel, len - myLevel).join('') + ';');
+        this.scopeClosers = [];
     },
 
     closeScopeLevels: function() {
-        if (!this.scopeClosers || this.scopeClosers === '') return;
-        this.emitLine(this.scopeClosers + ';');
-        this.scopeClosers = '';
+        if (!this.scopeClosers || this.scopeClosers.length === 0) return;
+        this.emitLine(this.scopeClosers.join('') + ';');
+        this.scopeClosers = [];
     },
 
     withScopedSyntax: function(func) {
         var scopeClosers = this.scopeClosers;
-        this.scopeClosers = '';
+        this.scopeClosers = [];
 
         func.call(this);
 
@@ -267,34 +295,15 @@ var Compiler = Object.extend({
         var contentArgs = node.contentArgs;
         var autoescape = typeof node.autoescape === 'boolean' ? node.autoescape : true;
 
+        this.emitLine('');
 
-
-        this.emit('return env.getExtension("' + node.extName + '")["' + node.prop + '"](');
-        this.emit('context');
-
-        if(args || contentArgs) {
-            this.emit(',');
-        }
-
-        if(args) {
-            if(!(args instanceof nodes.NodeList)) {
-                this.fail('compileCallExtension: arguments must be a NodeList, ' +
-                          'use `parser.parseSignature`');
-            }
-
-            lib.each(args.children, function(arg, i) {
-                // Tag arguments are passed normally to the call. Note
-                // that keyword arguments are turned into a single js
-                // object as the last argument, if they exist.
-                this._compileExpression(arg, frame);
-
-                if(i !== args.children.length - 1 || contentArgs.length) {
-                    this.emit(',');
-                }
-            }, this);
-        }
+        var promArr = this.tmpid();
 
         if(contentArgs.length) {
+
+            this.emit('return Promise.all([');
+
+
             lib.each(contentArgs, function(arg, i) {
                 if(i > 0) {
                     this.emit(',');
@@ -303,19 +312,61 @@ var Compiler = Object.extend({
                 if(arg) {
                     var id = this.tmpid();
 
-                    this.emitLine('Promise.method(function() {');
+                    this.emitLine('(function() {');
                     this.pushBufferId(id);
+                    this.emitLine('return Promise.method(function () {');
+                    this.withScopedSyntax(function () {
 
-                    this.compile(arg, frame);
+                        this.compile(arg, frame);
 
+                    });
                     this.popBufferId();
-                    this.emitLine('return ' + id + ';');
-                    this.emitLine('})');
+                    this.emitLine('})().then(function () { return ' + id + '; });');
+                    this.emitLine('})()');
                 }
                 else {
-                    this.emit('Promise.method(function (){})');
+                    this.emit('null');
                 }
             }, this);
+
+            this.emitLine(']).then(function (' + promArr + ') {');
+            this.addScopeLevel();
+
+        }
+
+
+        this.emit('return env.getExtension("' + node.extName + '")["' + node.prop + '"](');
+        this.emit('context');
+
+        // if(args || contentArgs) {
+        //     this.emit(',');
+        // }
+
+        if(args) {
+            if(!(args instanceof nodes.NodeList)) {
+
+                this.fail('compileCallExtension: arguments must be a NodeList, ' +
+                          'use `parser.parseSignature`');
+            }
+            this.emit(', [');
+            lib.each(args.children, function(arg, i) {
+                if (i > 0) this.emit(',');
+                // Tag arguments are passed normally to the call. Note
+                // that keyword arguments are turned into a single js
+                // object as the last argument, if they exist.
+                this._compileExpression(arg, frame);
+            }, this);
+            this.emit(']');
+        }
+        else if(contentArgs.length) {
+
+            this.emit(', []');
+
+        }
+
+
+        if(contentArgs.length) {
+            this.emit(', ' + promArr);
         }
 
         var res = this.tmpid();
@@ -735,7 +786,6 @@ var Compiler = Object.extend({
             }
 
             this.compile(node.body, frame);
-
             if(parallel) {
                 this.emitLine('return ' + buf);
                 this.popBufferId();
@@ -744,6 +794,7 @@ var Compiler = Object.extend({
 
 
         this.emitLine('}).then(' + cleanUpFn + ')' + this.makeThen());
+
         this.addScopeLevel();
 
 
@@ -944,20 +995,20 @@ var Compiler = Object.extend({
 
 
 
-        this.emit('var bv = ');
+        //this.emit('var bv = ');
 
-        if(!this.inBlock) {
-            this.emit('(parentTemplate ? function(e, c, f, r) { return Promise.resolve("") } : ');
-        }
-        this.emit('context.getBlock("' + node.name.value + '")');
-        if(!this.inBlock) {
-            this.emitLine(');');
-        }
-        else {
-            this.emitLine(';');
-        }
+        // if(!this.inBlock) {
+        //     this.emit('(parentTemplate ? function(e, c, f, r) { return Promise.resolve("") } : ');
+        // }
+        this.emit('return context.getBlock("' + node.name.value + '")(env, context, frame, runtime)' + this.makeThen(id));
+        // if(!this.inBlock) {
+        //     this.emitLine(');');
+        // }
+        // else {
+        //     this.emitLine(';');
+        // }
 
-        this.emitLine('return bv.call(this, env, context, frame, runtime)' + this.makeThen(id));
+        //this.emitLine('return bv.call(this, env, context, frame, runtime)' + this.makeThen(id));
         this.emitLine(this.buffer + ' += ' + id + ';');
         this.addScopeLevel();
     },
@@ -1099,6 +1150,7 @@ var Compiler = Object.extend({
     },
 
     compile: function (node, frame) {
+        //console.log('Compiling', node.typename);
         var _compile = this['compile' + node.typename];
         if(_compile) {
             _compile.call(this, node, frame);

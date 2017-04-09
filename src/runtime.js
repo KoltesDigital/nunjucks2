@@ -2,7 +2,7 @@
 
 var lib = require('./lib');
 var Obj = require('./object');
-Promise = require("bluebird");
+Promise = require('bluebird');
 
 // Frames keep track of scoping both at compile-time and run-time so
 // we know how to access variables. Block tags can introduce special
@@ -268,7 +268,8 @@ function handleError(error, lineno, colno) {
 function asyncEach(arr, dimen, iter) {
     if(lib.isArray(arr)) {
 
-        return lib.asyncIter(arr, function(item, i, len) {
+        return Promise.each(arr, function(item, i, len) {
+
             switch(dimen) {
                 case 1:
                     return iter(item, i, len);
@@ -278,29 +279,25 @@ function asyncEach(arr, dimen, iter) {
         });
     }
     else {
-        return lib.asyncFor(arr, function(key, val, i, len) {
-            return iter(key, val, i, len);
-        });
+        return lib.asyncFor(arr, iter);
     }
 }
 
-function asyncAll(arr, dimen, func) {
+function asyncAll( arr, dimen, func) {
 
     if(lib.isArray(arr)) {
 
-        return lib.asyncAll(arr, function(item, i, len) {
+        return Promise.all(arr, function(item, i, len) {
             switch(dimen) {
                 case 1:
-                    return func(this, item, i, len);
+                    return func(item, i, len);
                 default:
                     return func.apply(this, [].concat(item).concat([i, len]));
             }
         });
     }
     else {
-        return lib.asyncFor(arr, function(key, val, i, len) {
-            return func(key, val, i, len);
-        });
+        return lib.asyncFor(arr, func);
     }
 
 }
