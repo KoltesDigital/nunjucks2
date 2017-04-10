@@ -127,7 +127,7 @@ function _precompile(str, name, env) {
                                     env.opts);
     }
     catch(err) {
-        throw lib.prettifyError(name, false, err);
+        throw lib.prettifyError(name, true, err);
     }
 
     return { name: name, template: template };

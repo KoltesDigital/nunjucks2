@@ -42,7 +42,7 @@ var config = {
         process: 'mock'
     },
     plugins: [
-        new webpack.NormalModuleReplacementPlugin(/(path|precompile)$/,
+        new webpack.NormalModuleReplacementPlugin(/(path|precompile|gulp-nunjucks|webpack-loader)$/,
                                                   'node-libs-browser/mock/empty'),
         new webpack.BannerPlugin(
             'Browser bundle of nunjucks ' + VERSION + ' ' + TYPE

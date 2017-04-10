@@ -3,7 +3,6 @@
 var path = require('path');
 var lib = require('./lib');
 var Obj = require('./object');
-var waterfall = require("a-sync-waterfall");
 var compiler = require('./compiler');
 var builtin_filters = require('./filters');
 var builtin_loaders = require('./loaders');
@@ -294,9 +293,7 @@ var Environment = Obj.extend({
 
         var tmpl = new Template(src, this, opts.path);
         return tmpl.render(ctx);
-    },
-
-    waterfall: waterfall
+    }
 });
 
 var Context = Obj.extend({

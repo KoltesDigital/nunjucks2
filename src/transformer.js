@@ -2,18 +2,40 @@
 
 var nodes = require('./nodes');
 var lib = require('./lib');
+var _ = require('lodash');
 
 var sym = 0;
 function gensym() {
     return 'hole_' + sym++;
 }
 
-// copy-on-write version of map
-function mapCOW(arr, func) {
-    var res = null;
+// copy-on-write version of map for objects
+function mapCOWforObject(arr, ctx, func) {
+    var res = null, item = null, ctxItem =  null;
 
     for(var i=0; i<arr.length; i++) {
-        var item = func(arr[i]);
+        ctxItem = ctx[arr[i]];
+        item = func(ctxItem);
+
+        if(item !== ctxItem) {
+
+            if(!res) {
+                res = {};
+            }
+
+            res[i] = item;
+        }
+    }
+
+    return res || ctx;
+}
+
+// copy-on-write version of map
+function mapCOW(arr, func) {
+    var res = null, item = null;
+
+    for(var i=0; i<arr.length; i++) {
+        item = func(arr[i]);
 
         if(item !== arr[i]) {
             if(!res) {
@@ -51,16 +73,31 @@ function walk(ast, func, depthFirst) {
     }
     else if(ast instanceof nodes.CallExtension) {
         var args = walk(ast.args, func, depthFirst);
+        var contentSections = null;
 
-        var contentArgs = mapCOW(ast.contentArgs, function(node) {
-            return walk(node, func, depthFirst);
-        });
+        if (!_.isArray(ast.contentSections)) {
 
-        if(args !== ast.args || contentArgs !== ast.contentArgs) {
+            var keys = Object.keys(ast.contentSections);
+
+            contentSections = mapCOWforObject(keys, ast.contentSections, function(node) {
+                return walk(node, func, depthFirst);
+            });
+
+        }
+        else {
+
+            contentSections = mapCOW(ast.contentSections, function(node) {
+                return walk(node, func, depthFirst);
+            });
+        }
+
+
+
+        if(args !== ast.args || contentSections !== ast.contentSections) {
             ast = new nodes[ast.typename](ast.extName,
                                           ast.prop,
                                           args,
-                                          contentArgs);
+                                            contentSections);
         }
     }
     else {

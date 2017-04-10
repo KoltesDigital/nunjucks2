@@ -146,11 +146,11 @@ var CompareOperand = Node.extend('CompareOperand', {
 var CallExtension = Node.extend('CallExtension', {
     fields: ['extName', 'prop', 'args', 'contentArgs'],
 
-    init: function(ext, prop, args, contentArgs) {
+    init: function(ext, prop, args, contentSections) {
         this.extName = ext._name || ext;
         this.prop = prop;
         this.args = args || new NodeList();
-        this.contentArgs = contentArgs || [];
+        this.contentSections = contentSections || {};
         this.autoescape = ext.autoescape;
     }
 });

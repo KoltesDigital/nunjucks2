@@ -52,7 +52,7 @@ var Compiler = Object.extend({
     pushThisBufferId: function() {
         this.bufferStack.push(this.buffer);
         this.buffer = 'this._b';
-        this.emit(this.buffer + ' = "";');
+        this.emitLine(this.buffer + ' = "";');
     },
 
     pushBufferIdParam: function(id) {
@@ -63,7 +63,7 @@ var Compiler = Object.extend({
     pushBufferId: function(id) {
         this.bufferStack.push(this.buffer);
         this.buffer = id;
-        this.emit('var ' + this.buffer + ' = "";');
+        this.emitLine('var ' + this.buffer + ' = "";');
     },
 
     popThisBufferId: function() {
@@ -159,13 +159,13 @@ var Compiler = Object.extend({
     closeToMyScopeLevel: function(myLevel) {
         var len = this.scopeClosers.length;
         if (!this.scopeClosers || len === 0 || len <= myLevel) return;
-        this.emitLine(this.scopeClosers.splice(myLevel, len - myLevel).join('') + ';');
+        this.emitLine(this.scopeClosers.splice(myLevel, len - myLevel).join('\n') + ';');
         this.scopeClosers = [];
     },
 
     closeScopeLevels: function() {
         if (!this.scopeClosers || this.scopeClosers.length === 0) return;
-        this.emitLine(this.scopeClosers.join('') + ';');
+        this.emitLine(this.scopeClosers.join('\n') + ';');
         this.scopeClosers = [];
     },
 
@@ -292,47 +292,52 @@ var Compiler = Object.extend({
 
     compileCallExtension: function(node, frame) {
         var args = node.args;
-        var contentArgs = node.contentArgs;
+        var contentSections = node.contentSections;
         var autoescape = typeof node.autoescape === 'boolean' ? node.autoescape : true;
 
         this.emitLine('');
 
-        var promArr = this.tmpid();
+        var contentSectionsVar = this.tmpid();
 
-        if(contentArgs.length) {
+        var count = 0;
 
-            this.emit('return Promise.all([');
+        this.emitLine(contentSectionsVar + ' = {');
 
+        var iSection = null;
 
-            lib.each(contentArgs, function(arg, i) {
-                if(i > 0) {
-                    this.emit(',');
-                }
+        for (var section in contentSections) {
 
-                if(arg) {
-                    var id = this.tmpid();
+            if(count++ > 0) {
+                this.emitLine(',');
+            }
 
-                    this.emitLine('(function() {');
-                    this.pushBufferId(id);
-                    this.emitLine('return Promise.method(function () {');
-                    this.withScopedSyntax(function () {
+            iSection = contentSections[section];
 
-                        this.compile(arg, frame);
+            if (!iSection) {
 
-                    });
-                    this.popBufferId();
-                    this.emitLine('})().then(function () { return ' + id + '; });');
-                    this.emitLine('})()');
-                }
-                else {
-                    this.emit('null');
-                }
-            }, this);
+                this.emitLine(section + ': function() { return Promise.resolve(""); }');
 
-            this.emitLine(']).then(function (' + promArr + ') {');
-            this.addScopeLevel();
+                continue;
+
+            }
+
+            var id = this.tmpid();
+
+            this.emitLine(section + ': function() {');
+            this.pushBufferId(id);
+            this.emitLine('return Promise.attempt(function () {');
+            this.withScopedSyntax(function () {
+
+                this.compile(iSection, frame);
+
+            });
+            this.popBufferId();
+            this.emitLine('}).then(function () { return ' + id + '; });');
+            this.emitLine('}');
 
         }
+
+        this.emitLine('};');
 
 
         this.emit('return env.getExtension("' + node.extName + '")["' + node.prop + '"](');
@@ -358,15 +363,18 @@ var Compiler = Object.extend({
             }, this);
             this.emit(']');
         }
-        else if(contentArgs.length) {
+        else if(count > 0) {
 
             this.emit(', []');
 
         }
 
 
-        if(contentArgs.length) {
-            this.emit(', ' + promArr);
+        if(count > 0) {
+            this.emit(', ' + contentSectionsVar);
+        }
+        else {
+            this.emit(', {}');
         }
 
         var res = this.tmpid();

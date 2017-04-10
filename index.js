@@ -83,4 +83,12 @@ module.exports.renderString = function(src, ctx, cb) {
 if(precompile) {
     module.exports.precompile = precompile.precompile;
     module.exports.precompileString = precompile.precompileString;
+    module.exports.gulp = require('./src/gulp-nunjucks');
+
+    if (typeof module.exports.gulp === 'function') {
+        module.exports.gulp = module.exports.gulp(precompile.precompileString);
+    }
+
+    module.exports.webpack = require('./src/webpack-loader');
 }
+

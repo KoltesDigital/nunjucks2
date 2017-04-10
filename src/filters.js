@@ -2,6 +2,7 @@
 
 var lib = require('./lib');
 var r = require('./runtime');
+var moment      = require('moment');
 
 function normalize(value, defaultValue) {
     if(value === null || value === undefined || value === false) {
@@ -581,6 +582,43 @@ var filters = {
     'int': function(val, def) {
         var res = parseInt(val, 10);
         return isNaN(res) ? def : res;
+    },
+
+    /**
+     * nunjucks-date-filter
+     * https://github.com/piwi/nunjucks-date-filter
+     *
+     * Copyright (c) 2015 Pierre Cassat
+     * Licensed under the Apache 2.0 license.
+     */
+
+    'date': function (date, format) {
+        var result;
+        var errs = [];
+        var args = [];
+        var obj;
+        Array.prototype.push.apply(args, arguments);
+        try {
+            obj = moment.utc(date);
+        } catch (err) {
+            errs.push(err);
+        }
+        if (obj) {
+            try {
+                if (obj[format] && lib.isFunction(obj[format])) {
+                    result = obj[format].apply(obj, args.slice(2));
+                } else {
+                    result = obj.format(format);
+                }
+            } catch(err) {
+                errs.push(err);
+            }
+        }
+
+        if (errs.length) {
+            return errs.join("\n");
+        }
+        return result;
     }
 };
 
