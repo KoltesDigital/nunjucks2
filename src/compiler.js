@@ -1010,13 +1010,16 @@ var Compiler = Object.extend({
             this.emit('var bv = ');
 
             this.emitLine('(parentTemplate ? function(e, c, f, r) { return "" } : context.getBlock("' + node.name.value + '"));');
-            this.emitLine('return bv(env, context, frame, runtime);');
+            this.emit('return bv(env, context, frame, runtime)');
         }
         else {
-            this.emit('return context.getBlock("' + node.name.value + '")' + this.makeThen(id));
-            this.emitLine(this.buffer + ' += ' + id + ';');
-            this.addScopeLevel();
+            this.emit('return context.getBlock("' + node.name.value + '")');
         }
+
+        this.emit(this.makeThen(id));
+
+        this.emitLine(this.buffer + ' += ' + id + ';');
+        this.addScopeLevel();
 
     },
 
