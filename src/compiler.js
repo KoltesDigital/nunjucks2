@@ -1010,7 +1010,7 @@ var Compiler = Object.extend({
         }
         this.emit('return bv(env, context, frame, runtime)');
         if(!this.inBlock) {
-            this.emitLine(');');
+            this.emitLine(';');
         }
         else {
             this.emit(this.makeThen(id));
