@@ -1,7 +1,7 @@
 {
   "name": "nunjucks2",
   "description": "A powerful templating engine with inheritance, asynchronous control, and more (jinja2 inspired) - this is a hard fork from https://github.com/mozilla/nunjucks but uses Promises, specifically bluebird.",
-  "version": "3.0.8",
+  "version": "3.0.9",
   "author": "Craig Smith <spuddleziz@gmail.com>",
   "dependencies": {
     "bluebird": "^3.5.0",
