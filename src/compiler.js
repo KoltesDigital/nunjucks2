@@ -1013,7 +1013,7 @@ var Compiler = Object.extend({
             this.emit('return bv(env, context, frame, runtime)');
         }
         else {
-            this.emit('return context.getBlock("' + node.name.value + '")');
+            this.emit('return (context.getBlock("' + node.name.value + '"))(env, context, frame, runtime)');
         }
 
         this.emit(this.makeThen(id));
