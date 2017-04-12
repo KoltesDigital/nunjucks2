@@ -1003,22 +1003,21 @@ var Compiler = Object.extend({
 
 
 
-        //this.emit('var bv = ');
+        this.emit('var bv = ');
 
-        // if(!this.inBlock) {
-        //     this.emit('(parentTemplate ? function(e, c, f, r) { return Promise.resolve("") } : ');
-        // }
-        this.emit('return context.getBlock("' + node.name.value + '")(env, context, frame, runtime)' + this.makeThen(id));
-        // if(!this.inBlock) {
-        //     this.emitLine(');');
-        // }
-        // else {
-        //     this.emitLine(';');
-        // }
+        if(!this.inBlock) {
+            this.emitLine('(parentTemplate ? function(e, c, f, r) { return "" } : context.getBlock("' + node.name.value + '"));');
+        }
+        this.emit('return bv(env, context, frame, runtime)');
+        if(!this.inBlock) {
+            this.emitLine(');');
+        }
+        else {
+            this.emit(this.makeThen(id));
+            this.emitLine(this.buffer + ' += ' + id + ';');
+            this.addScopeLevel();
+        }
 
-        //this.emitLine('return bv.call(this, env, context, frame, runtime)' + this.makeThen(id));
-        this.emitLine(this.buffer + ' += ' + id + ';');
-        this.addScopeLevel();
     },
 
     compileSuper: function(node, frame) {
