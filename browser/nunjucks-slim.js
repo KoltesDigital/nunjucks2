@@ -1,4 +1,4 @@
-/*! Browser bundle of nunjucks 3.0.2 (slim, only works with precompiled templates) */
+/*! Browser bundle of nunjucks 3.0.3 (slim, only works with precompiled templates) */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -74,7 +74,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 127);
+/******/ 	return __webpack_require__(__webpack_require__.s = 126);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -1910,7 +1910,7 @@ function loadLocale(name) {
             module && module.exports) {
         try {
             oldLocale = globalLocale._abbr;
-            __webpack_require__(126)("./" + name);
+            __webpack_require__(127)("./" + name);
             // because defineLocale currently also sets the global locale, we
             // want to undo that for lazy loaded locales
             getSetGlobalLocale(oldLocale);
@@ -22757,6 +22757,107 @@ module.exports = installCompat;
 /* 126 */
 /***/ (function(module, exports, __webpack_require__) {
 
+"use strict";
+
+
+var lib = __webpack_require__(2);
+var env = __webpack_require__(124);
+var Loader = __webpack_require__(6);
+var loaders = __webpack_require__(1);
+var precompile = __webpack_require__(1);
+
+module.exports = {};
+module.exports.Environment = env.Environment;
+module.exports.Template = env.Template;
+
+module.exports.Loader = Loader;
+module.exports.FileSystemLoader = loaders.FileSystemLoader;
+module.exports.PrecompiledLoader = loaders.PrecompiledLoader;
+module.exports.WebLoader = loaders.WebLoader;
+
+module.exports.compiler = __webpack_require__(1);
+module.exports.parser = __webpack_require__(1);
+module.exports.lexer = __webpack_require__(1);
+module.exports.runtime = __webpack_require__(3);
+module.exports.lib = lib;
+module.exports.nodes = __webpack_require__(1);
+
+module.exports.installJinjaCompat = __webpack_require__(125);
+
+// A single instance of an environment, since this is so commonly used
+
+var e;
+module.exports.configure = function(templatesPath, opts) {
+    opts = opts || {};
+    if(lib.isObject(templatesPath)) {
+        opts = templatesPath;
+        templatesPath = null;
+    }
+
+    var TemplateLoader;
+    if(loaders.FileSystemLoader) {
+        TemplateLoader = new loaders.FileSystemLoader(templatesPath, {
+            watch: opts.watch,
+            noCache: opts.noCache
+        });
+    }
+    else if(loaders.WebLoader) {
+        TemplateLoader = new loaders.WebLoader(templatesPath, {
+            useCache: opts.web && opts.web.useCache,
+            async: opts.web && opts.web.async
+        });
+    }
+
+    e = new env.Environment(TemplateLoader, opts);
+
+    if(opts && opts.express) {
+        e.express(opts.express);
+    }
+
+    return e;
+};
+
+module.exports.compile = function(src, env, path, eagerCompile) {
+    if(!e) {
+        module.exports.configure();
+    }
+    return new module.exports.Template(src, env, path, eagerCompile);
+};
+
+module.exports.render = function(name, ctx, cb) {
+    if(!e) {
+        module.exports.configure();
+    }
+
+    return e.render(name, ctx, cb);
+};
+
+module.exports.renderString = function(src, ctx, cb) {
+    if(!e) {
+        module.exports.configure();
+    }
+
+    return e.renderString(src, ctx, cb);
+};
+
+if(precompile) {
+    module.exports.precompile = precompile.precompile;
+    module.exports.precompileString = precompile.precompileString;
+    module.exports.gulp = __webpack_require__(1);
+
+    if (typeof module.exports.gulp === 'function') {
+        module.exports.gulp = module.exports.gulp(precompile.precompileString);
+    }
+
+    module.exports.webpack = __webpack_require__(1);
+}
+
+
+
+/***/ }),
+/* 127 */
+/***/ (function(module, exports, __webpack_require__) {
+
 var map = {
 	"./af": 7,
 	"./af.js": 7,
@@ -23003,108 +23104,7 @@ webpackContext.keys = function webpackContextKeys() {
 };
 webpackContext.resolve = webpackContextResolve;
 module.exports = webpackContext;
-webpackContext.id = 126;
-
-/***/ }),
-/* 127 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var lib = __webpack_require__(2);
-var env = __webpack_require__(124);
-var Loader = __webpack_require__(6);
-var loaders = __webpack_require__(1);
-var precompile = __webpack_require__(1);
-
-module.exports = {};
-module.exports.Environment = env.Environment;
-module.exports.Template = env.Template;
-
-module.exports.Loader = Loader;
-module.exports.FileSystemLoader = loaders.FileSystemLoader;
-module.exports.PrecompiledLoader = loaders.PrecompiledLoader;
-module.exports.WebLoader = loaders.WebLoader;
-
-module.exports.compiler = __webpack_require__(1);
-module.exports.parser = __webpack_require__(1);
-module.exports.lexer = __webpack_require__(1);
-module.exports.runtime = __webpack_require__(3);
-module.exports.lib = lib;
-module.exports.nodes = __webpack_require__(1);
-
-module.exports.installJinjaCompat = __webpack_require__(125);
-
-// A single instance of an environment, since this is so commonly used
-
-var e;
-module.exports.configure = function(templatesPath, opts) {
-    opts = opts || {};
-    if(lib.isObject(templatesPath)) {
-        opts = templatesPath;
-        templatesPath = null;
-    }
-
-    var TemplateLoader;
-    if(loaders.FileSystemLoader) {
-        TemplateLoader = new loaders.FileSystemLoader(templatesPath, {
-            watch: opts.watch,
-            noCache: opts.noCache
-        });
-    }
-    else if(loaders.WebLoader) {
-        TemplateLoader = new loaders.WebLoader(templatesPath, {
-            useCache: opts.web && opts.web.useCache,
-            async: opts.web && opts.web.async
-        });
-    }
-
-    e = new env.Environment(TemplateLoader, opts);
-
-    if(opts && opts.express) {
-        e.express(opts.express);
-    }
-
-    return e;
-};
-
-module.exports.compile = function(src, env, path, eagerCompile) {
-    if(!e) {
-        module.exports.configure();
-    }
-    return new module.exports.Template(src, env, path, eagerCompile);
-};
-
-module.exports.render = function(name, ctx, cb) {
-    if(!e) {
-        module.exports.configure();
-    }
-
-    return e.render(name, ctx, cb);
-};
-
-module.exports.renderString = function(src, ctx, cb) {
-    if(!e) {
-        module.exports.configure();
-    }
-
-    return e.renderString(src, ctx, cb);
-};
-
-if(precompile) {
-    module.exports.precompile = precompile.precompile;
-    module.exports.precompileString = precompile.precompileString;
-    module.exports.gulp = __webpack_require__(1);
-
-    if (typeof module.exports.gulp === 'function') {
-        module.exports.gulp = module.exports.gulp(precompile.precompileString);
-    }
-
-    module.exports.webpack = __webpack_require__(1);
-}
-
-
+webpackContext.id = 127;
 
 /***/ }),
 /* 128 */
