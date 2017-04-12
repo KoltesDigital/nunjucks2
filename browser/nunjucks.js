@@ -1,4 +1,4 @@
-/*! Browser bundle of nunjucks 3.0.7  */
+/*! Browser bundle of nunjucks 3.0.8  */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -12310,7 +12310,7 @@ var Compiler = Object.extend({
             this.emit('return bv(env, context, frame, runtime)');
         }
         else {
-            this.emit('return context.getBlock("' + node.name.value + '")');
+            this.emit('return (context.getBlock("' + node.name.value + '"))(env, context, frame, runtime)');
         }
 
         this.emit(this.makeThen(id));

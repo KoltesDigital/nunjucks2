@@ -1,4 +1,4 @@
-/*! Browser bundle of nunjucks 3.0.7 (slim, only works with precompiled templates) */
+/*! Browser bundle of nunjucks 3.0.8 (slim, only works with precompiled templates) */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
