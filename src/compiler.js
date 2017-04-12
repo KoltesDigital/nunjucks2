@@ -1009,7 +1009,7 @@ var Compiler = Object.extend({
 
             this.emit('var bv = ');
 
-            this.emitLine('(parentTemplate ? function(e, c, f, r) { return "" } : context.getBlock("' + node.name.value + '"));');
+            this.emitLine('(parentTemplate ? function(e, c, f, r) { return Promise.resolve(""); } : context.getBlock("' + node.name.value + '"));');
             this.emit('return bv(env, context, frame, runtime)');
         }
         else {
