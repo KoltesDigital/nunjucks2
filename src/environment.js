@@ -235,13 +235,13 @@ var Environment = Obj.extend({
                 else {
                     var item = loader.getSource(name);
 
-                    if (!item) throw new Error('Unable to find item');
+                    if (!item) throw new Error('Unable to find item ' + name);
 
                     return handle(item);
                 }
             })).then(createTemplate).catch(function (e) {
 
-                console.error("Error finding available templaatre");
+                console.error("Error finding available template within loaders");
 
                 if (!ignoreMissing) throw e;
                 return createTemplate(false);

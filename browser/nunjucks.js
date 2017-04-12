@@ -1,4 +1,4 @@
-/*! Browser bundle of nunjucks 3.0.8  */
+/*! Browser bundle of nunjucks 3.0.10  */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -11992,8 +11992,11 @@ var Compiler = Object.extend({
     compileIf : function(node, frame) {
         //force async as we use promises
 
-        this.compileIfInner(node, frame);
+        //this.compileIfInner(node, frame);
 
+        //always need to use the asynchronous if version
+
+        this.compileIfAsync(node, frame);
     },
 
     compileIfAsync: function(node, frame) {
@@ -25827,13 +25830,13 @@ var Environment = Obj.extend({
                 else {
                     var item = loader.getSource(name);
 
-                    if (!item) throw new Error('Unable to find item');
+                    if (!item) throw new Error('Unable to find item ' + name);
 
                     return handle(item);
                 }
             })).then(createTemplate).catch(function (e) {
 
-                console.error("Error finding available templaatre");
+                console.error("Error finding available template within loaders");
 
                 if (!ignoreMissing) throw e;
                 return createTemplate(false);

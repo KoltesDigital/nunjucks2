@@ -695,8 +695,11 @@ var Compiler = Object.extend({
     compileIf : function(node, frame) {
         //force async as we use promises
 
-        this.compileIfInner(node, frame);
+        //this.compileIfInner(node, frame);
 
+        //always need to use the asynchronous if version
+
+        this.compileIfAsync(node, frame);
     },
 
     compileIfAsync: function(node, frame) {

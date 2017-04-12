@@ -1,4 +1,4 @@
-/*! Browser bundle of nunjucks 3.0.8 (slim, only works with precompiled templates) */
+/*! Browser bundle of nunjucks 3.0.10 (slim, only works with precompiled templates) */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -22301,13 +22301,13 @@ var Environment = Obj.extend({
                 else {
                     var item = loader.getSource(name);
 
-                    if (!item) throw new Error('Unable to find item');
+                    if (!item) throw new Error('Unable to find item ' + name);
 
                     return handle(item);
                 }
             })).then(createTemplate).catch(function (e) {
 
-                console.error("Error finding available templaatre");
+                console.error("Error finding available template within loaders");
 
                 if (!ignoreMissing) throw e;
                 return createTemplate(false);
